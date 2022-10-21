@@ -38,13 +38,10 @@ const redisKey = (existUrl: string, cookie: string) =>
 
 const createExistUrl = (request: Request) => {
   let url = existUrlBase.replace("\\/$", "") + request.path;
-  if (request.query) {
+  const entries = Object.entries(request.query);
+  if (entries.length > 0) {
     url =
-      url +
-      "?" +
-      Object.entries(request.query)
-        .map(([key, value]) => `${key}=${value}`)
-        .join(",");
+      url + "?" + entries.map(([key, value]) => `${key}=${value}`).join("&");
   }
   return url;
 };
