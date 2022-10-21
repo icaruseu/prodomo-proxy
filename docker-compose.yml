@@ -7,7 +7,6 @@ services:
       - default
     volumes:
       - data:/exist/data
-      - .volumes/exist-logs:/exist/logs
 
   redis:
     image: "redis:alpine"
