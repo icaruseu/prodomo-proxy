@@ -3,27 +3,31 @@ version: "3"
 services:
   exist:
     image: existdb/existdb:release
-    ports:
-      - 8080:8080
-      - 8443:8443
     networks:
       - default
     volumes:
       - data:/exist/data
       - .volumes/exist-logs:/exist/logs
-    environment:
-      - LINK_BASE=http://localhost:3000
-      - JAVA_TOOL_OPTIONS=-Dfile.encoding=UTF8 -Dsun.jnu.encoding=UTF-8 -Djava.awt.headless=true -Dorg.exist.db-connection.cacheSize=256M -Dorg.exist.db-connection.pool.max=20 -Dlog4j.configurationFile=/exist/etc/log4j2.xml -Dexist.home=/exist -Dexist.configurationFile=/exist/etc/conf.xml -Djetty.home=/exist -Dexist.jetty.config=/exist/etc/jetty/standard.enabled-jetty-configs -XX:+UnlockExperimentalVMOptions -XX:+UseCGroupMemoryLimitForHeap -XX:+UseG1GC -XX:+UseStringDeduplication -XX:MaxRAMFraction=1 -XX:+ExitOnOutOfMemoryError -Xmx2g -Xms1g
 
   redis:
     image: "redis:alpine"
     command: redis-server
-    ports:
-      - 6379:6379
     networks:
       - default
     volumes:
       - redis:/data
+
+  proxy:
+    build: .
+    depends_on:
+      - redis
+      - exist
+    networks:
+      - default
+    environment:
+      - EXIST_URL_BASE=http://exist:8080/exist/apps/prodomo
+      - REDIS_URL=redis://redis:6379
+      - REDIS_EXPIRY_SEC=2628000 # 1 Month
 
 networks:
   default:
