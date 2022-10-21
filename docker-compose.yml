@@ -1,0 +1,17 @@
+version: "3"
+
+services:
+  exist:
+    image: existdb/existdb:release
+    ports:
+      - 8080:8080
+      - 8443:8443
+    volumes:
+      - data:/exist/data
+      - .volumes/exist-logs:/exist/logs
+    environment:
+      - LINK_BASE=http://localhost:3000
+      - JAVA_TOOL_OPTIONS=-Dfile.encoding=UTF8 -Dsun.jnu.encoding=UTF-8 -Djava.awt.headless=true -Dorg.exist.db-connection.cacheSize=256M -Dorg.exist.db-connection.pool.max=20 -Dlog4j.configurationFile=/exist/etc/log4j2.xml -Dexist.home=/exist -Dexist.configurationFile=/exist/etc/conf.xml -Djetty.home=/exist -Dexist.jetty.config=/exist/etc/jetty/standard.enabled-jetty-configs -XX:+UnlockExperimentalVMOptions -XX:+UseCGroupMemoryLimitForHeap -XX:+UseG1GC -XX:+UseStringDeduplication -XX:MaxRAMFraction=1 -XX:+ExitOnOutOfMemoryError -Xmx2g -Xms1g
+
+volumes:
+  data:
