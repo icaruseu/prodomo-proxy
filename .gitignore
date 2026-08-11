@@ -4,3 +4,4 @@ node_modules
 *.bak-*
 *.bak2-*
 *.xar
+docker-compose.override.yml
