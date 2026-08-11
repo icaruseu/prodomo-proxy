@@ -1,2 +1,6 @@
 .volumes
 node_modules
+.env
+*.bak-*
+*.bak2-*
+*.xar

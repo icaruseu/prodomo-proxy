@@ -1,0 +1,82 @@
+services:
+  exist:
+    #ports:
+    #- 8888:8080
+    #- 8889:8443
+    restart: always
+    mem_limit: 3584m
+    environment:
+      - LINK_BASE=https://prodomo.icar-us.eu
+      - JAVA_TOOL_OPTIONS=-Dfile.encoding=UTF8 -Dsun.jnu.encoding=UTF-8 -Djava.awt.headless=true -Dorg.exist.db-connection.cacheSize=512M -Dorg.exist.db-connection.pool.max=20 -Dlog4j.configurationFile=/exist/etc/log4j2.xml -Dexist.home=/exist -Dexist.configurationFile=/exist/etc/conf.xml -Djetty.home=/exist -Dexist.jetty.config=/exist/etc/jetty/standard.enabled-jetty-configs -XX:+UnlockExperimentalVMOptions -XX:+UseCGroupMemoryLimitForHeap -XX:+UseG1GC -XX:+UseStringDeduplication -XX:MaxRAMFraction=1 -XX:+ExitOnOutOfMemoryError -Xmx2g -Xms1g
+ 
+  redis:
+    restart: always
+    command: ["redis-server", "--maxmemory", "2gb", "--maxmemory-policy", "allkeys-lru", "--save", ""]
+    mem_limit: 2560m
+
+  proxy:
+    networks:
+      - traefik
+    restart: always
+    mem_limit: 512m
+    labels:
+      - traefik.enable=true
+        
+      # HTTP -> HTTPS redirect
+      - traefik.http.middlewares.prodomo-https-redirect.redirectscheme.scheme=https
+      - traefik.http.routers.prodomo.entrypoints=http
+      - traefik.http.routers.prodomo.rule=Host(`prodomo.icar-us.eu`)
+      - traefik.http.routers.prodomo.middlewares=prodomo-https-redirect
+
+      # HTTPS router for /search (most restrictive)
+      - traefik.http.routers.prodomo-search-secure.entrypoints=https
+      - traefik.http.routers.prodomo-search-secure.rule=Host(`prodomo.icar-us.eu`) && PathPrefix(`/search`)
+      - traefik.http.routers.prodomo-search-secure.tls=true
+      - traefik.http.routers.prodomo-search-secure.tls.certresolver=http
+      - traefik.http.routers.prodomo-search-secure.tls.options=default
+      - traefik.http.routers.prodomo-search-secure.priority=100
+      - traefik.http.routers.prodomo-search-secure.service=prodomo-anubis
+      - traefik.http.routers.prodomo-search-secure.middlewares=block-bots@file,prodomo-ratelimit@file,denyip@file
+
+
+      # HTTPS router for everything else (less restrictive)
+      - traefik.http.routers.prodomo-secure.entrypoints=https
+      - traefik.http.routers.prodomo-secure.rule=Host(`prodomo.icar-us.eu`)
+      - traefik.http.routers.prodomo-secure.tls=true
+      - traefik.http.routers.prodomo-secure.tls.certresolver=http
+      - traefik.http.routers.prodomo-secure.tls.options=default
+      - traefik.http.routers.prodomo-secure.service=prodomo
+      - traefik.http.routers.prodomo-secure.middlewares=block-bots@file,prodomo-ratelimit@file,denyip@file
+
+      - traefik.http.services.prodomo.loadbalancer.server.port=3000
+      - traefik.docker.network=traefik
+  anubis:
+    image: ghcr.io/techarohq/anubis:v1.27.0
+    restart: always
+    depends_on:
+      - proxy
+    networks:
+      - default
+      - traefik
+    mem_limit: 256m
+    environment:
+      BIND: ":8923"
+      TARGET: "http://proxy:3000"
+      ED25519_PRIVATE_KEY_HEX: "${ANUBIS_KEY}"
+      DIFFICULTY: "4"
+      SERVE_ROBOTS_TXT: "false"
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=traefik
+      - traefik.http.services.prodomo-anubis.loadbalancer.server.port=8923
+      - traefik.http.routers.prodomo-anubis-assets.entrypoints=https
+      - traefik.http.routers.prodomo-anubis-assets.rule=Host(`prodomo.icar-us.eu`) && PathPrefix(`/.within.website`)
+      - traefik.http.routers.prodomo-anubis-assets.priority=300
+      - traefik.http.routers.prodomo-anubis-assets.tls=true
+      - traefik.http.routers.prodomo-anubis-assets.tls.certresolver=http
+      - traefik.http.routers.prodomo-anubis-assets.tls.options=default
+      - traefik.http.routers.prodomo-anubis-assets.service=prodomo-anubis
+
+networks:
+  traefik:
+    external: true

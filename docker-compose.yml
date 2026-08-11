@@ -1,8 +1,6 @@
-version: "3"
-
 services:
   exist:
-    image: existdb/existdb:release
+    image: existdb/existdb:6.3.0
     networks:
       - default
     volumes:
@@ -13,8 +11,6 @@ services:
     command: redis-server
     networks:
       - default
-    volumes:
-      - redis:/data
 
   proxy:
     build: .
@@ -33,4 +29,3 @@ networks:
 
 volumes:
   data:
-  redis:
