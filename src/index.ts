@@ -81,12 +81,39 @@ process.on("unhandledRejection", (reason) =>
 const redisKey = (existUrl: string, cookie: string) =>
   `${keyVersion}:` + Buffer.from(`${existUrl}--${cookie}`).toString("base64");
 
+// The eXist app reflects every unrecognised query parameter back into the page
+// (request:get-parameter-names in modules/functions.xql), so junk parameters both
+// change the output and mint a distinct cache entry per variant. A scanner appending
+// ?arubalp=...&cmd=... to real URLs drove the hit ratio to 1.4% and sent every request
+// to the backend. Only parameters the application actually reads are forwarded.
+// Localised variants taken from data/i18n/collection_{de,en}.xml.
+const allowedParams = new Set([
+  "f",
+  "l",
+  "q",
+  "lang",
+  "aspect",
+  "aspekt",
+  "community",
+  "gemeinschaft",
+  "person",
+  "reference",
+  "quelle",
+  "source",
+]);
+
 const createExistUrl = (request: Request) => {
   const base = existUrlBase.replace(/\/+$/, "") + request.path;
   const parts: string[] = [];
   const push = (key: string, value: unknown) =>
     parts.push(`${encodeURIComponent(key)}=${encodeURIComponent(String(value))}`);
-  for (const [key, value] of Object.entries(request.query)) {
+  // Sorted so that parameter order cannot produce two keys for one page.
+  for (const [key, value] of Object.entries(request.query).sort(([a], [b]) =>
+    a.localeCompare(b)
+  )) {
+    if (!allowedParams.has(key.toLowerCase())) {
+      continue;
+    }
     if (Array.isArray(value)) {
       value.forEach((entry) => push(key, entry));
     } else if (value !== undefined && value !== null) {
