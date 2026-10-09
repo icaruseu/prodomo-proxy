@@ -1,7 +1,0 @@
-# Normalise line endings. The working tree had drifted to CRLF, which showed
-# every file as fully modified and buried real changes in whitespace noise.
-* text=auto eol=lf
-*.png binary
-*.jpg binary
-*.ico binary
-*.xar binary
